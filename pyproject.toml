@@ -1,0 +1,8 @@
+[project]
+name = "rabbitmq-python"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "aio-pika>=9.6.2",
+    "pika-stubs>=0.1.3",
+]

@@ -11,8 +11,8 @@ import asyncio
 log = logging.getLogger(__name__)
 
 
-async def produce_message(channel: AbstractRobustChannel) -> None:
-    message_body = f"Hello, World! {time.time()}"
+async def produce_message(channel: AbstractRobustChannel, index: int) -> None:
+    message_body = f"[{index:02d}] Hello, World! {time.time()}"
     log.debug("Send message to RabbitMQ %s", message_body)
     exchange = await channel.declare_exchange(MQ_EXCHANGE, aio_pika.ExchangeType.DIRECT)
     queue = await channel.declare_queue(MQ_ROUTING_KEY)
@@ -29,7 +29,9 @@ async def main():
         log.info("Connecting to RabbitMQ %s", conn)
         async with conn.channel() as channel:
             log.info("Created channel %s", conn)
-            await produce_message(channel)
+            for i in range(10):
+                await produce_message(channel, index=i)
+                await asyncio.sleep(0.5)
             # while True:
             #     pass
 

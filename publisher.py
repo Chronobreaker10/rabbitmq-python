@@ -5,7 +5,7 @@ import aio_pika
 from aio_pika import Message
 from aio_pika.abc import AbstractRobustChannel
 
-from rabbit.config import configure_logging, get_connection, MQ_ROUTING_KEY, MQ_EXCHANGE
+from rabbit.config import configure_logging, get_connection, MQ_NOTIFICATIONS_ROUTING_KEY, MQ_NOTIFICATIONS_EXCHANGE_NAME
 import asyncio
 
 log = logging.getLogger(__name__)
@@ -14,12 +14,14 @@ log = logging.getLogger(__name__)
 async def produce_message(channel: AbstractRobustChannel, index: int) -> None:
     message_body = f"[{index:02d}] Hello, World! {time.time()}"
     log.debug("Send message to RabbitMQ %s", message_body)
-    exchange = await channel.declare_exchange(MQ_EXCHANGE, aio_pika.ExchangeType.DIRECT)
-    queue = await channel.declare_queue(MQ_ROUTING_KEY)
-    await queue.bind(exchange, routing_key=MQ_ROUTING_KEY)
+    # durable - обменник не исчезнет после остановки Rabbit
+    exchange = await channel.declare_exchange(MQ_NOTIFICATIONS_EXCHANGE_NAME, aio_pika.ExchangeType.DIRECT, durable=True)
+    queue = await channel.declare_queue(MQ_NOTIFICATIONS_ROUTING_KEY, durable=True)
+    await queue.bind(exchange, routing_key=MQ_NOTIFICATIONS_ROUTING_KEY)
     await exchange.publish(
-        Message(body=message_body.encode('utf-8')),
-        routing_key=MQ_ROUTING_KEY,
+        # aio_pika.DeliveryMode.PERSISTENT - сообщение не исчезнет после остановки Rabbit
+        Message(body=message_body.encode('utf-8'), delivery_mode=aio_pika.DeliveryMode.PERSISTENT),
+        routing_key=MQ_NOTIFICATIONS_ROUTING_KEY,
     )
     log.warning("Published message to RabbitMQ %s", message_body)
 

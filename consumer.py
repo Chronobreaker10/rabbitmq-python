@@ -4,7 +4,8 @@ import time
 
 from aio_pika.abc import AbstractRobustChannel, AbstractIncomingMessage
 
-from config import configure_logging, get_connection, MQ_ROUTING_KEY
+from rabbit.config import configure_logging, MQ_ROUTING_KEY
+from rabbit import RabbitBase
 
 log = logging.getLogger(__name__)
 
@@ -31,8 +32,8 @@ async def consume_messages(channel: AbstractRobustChannel) -> None:
 
     # Указываем загрузить только одно сообщение, а следующее только после обработки предыдущего
     await channel.set_qos(prefetch_count=1)
-
-    queue = await channel.get_queue(MQ_ROUTING_KEY)
+    queue = await channel.declare_queue(MQ_ROUTING_KEY)
+    # queue = await channel.get_queue(MQ_ROUTING_KEY)
     await queue.consume(process_message, no_ack=True)
     # Альтернативный способ через цикл
     # async with queue.iterator() as queue_iter:
@@ -41,12 +42,10 @@ async def consume_messages(channel: AbstractRobustChannel) -> None:
 
 
 async def main():
-    async with get_connection() as conn:
-        log.info("Connecting to RabbitMQ %s", conn)
-        async with conn.channel() as channel:
-            log.info("Created channel %s", conn)
-            await consume_messages(channel)
-            await asyncio.Event().wait()
+    async with RabbitBase() as rabbit:
+        log.info("Created channel %s", rabbit.channel)
+        await consume_messages(rabbit.channel)
+        await asyncio.Event().wait()
 
 
 if __name__ == "__main__":

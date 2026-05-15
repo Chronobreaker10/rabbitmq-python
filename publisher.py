@@ -5,7 +5,7 @@ import aio_pika
 from aio_pika import Message
 from aio_pika.abc import AbstractRobustChannel
 
-from config import configure_logging, get_connection, MQ_ROUTING_KEY, MQ_EXCHANGE
+from rabbit.config import configure_logging, get_connection, MQ_ROUTING_KEY, MQ_EXCHANGE
 import asyncio
 
 log = logging.getLogger(__name__)

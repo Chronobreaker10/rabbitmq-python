@@ -10,8 +10,13 @@ RMQ_HOST = "0.0.0.0"
 RMQ_PORT = 5672
 RMQ_USER = "user"
 RMQ_PASSWORD = "password"
-MQ_EXCHANGE = "notifications.amq.direct"
+
+MQ_EXCHANGE = "notifications"
 MQ_ROUTING_KEY = "notifications"
+
+MQ_EMAIL_UPDATES_EXCHANGE_NAME = "email.updates"
+MQ_EMAIL_UPDATES_EMAIL_QUEUE_NAME = "email.updates.email_queue"
+MQ_EMAIL_UPDATES_PUSH_QUEUE_NAME = "email.updates.push_queue"
 
 
 @asynccontextmanager

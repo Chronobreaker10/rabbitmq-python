@@ -13,6 +13,8 @@ RMQ_HOST = "0.0.0.0"
 RMQ_PORT = 5672
 RMQ_USER = "user"
 RMQ_PASSWORD = "password"
+RMQ_TTL_MS = 60_000
+RMQ_DLQ_TTL_MS = 120_000
 
 MQ_NOTIFICATIONS_EXCHANGE = "notifications"
 MQ_NOTIFICATIONS_QUEUE = "notifications"
@@ -22,7 +24,6 @@ MQ_NOTIFICATIONS_DEAD_LETTER_EXCHANGE = "dlx-notifications"
 MQ_EMAIL_UPDATES_EXCHANGE = "email.updates"
 MQ_EMAIL_UPDATES_EMAIL_QUEUE = "email.updates.email_queue"
 MQ_EMAIL_UPDATES_PUSH_QUEUE = "email.updates.push_queue"
-
 
 @asynccontextmanager
 async def get_connection() -> AsyncGenerator[AbstractRobustConnection, Any]:

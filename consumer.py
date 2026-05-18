@@ -5,7 +5,8 @@ from random import random
 
 from aio_pika.abc import AbstractRobustChannel, AbstractIncomingMessage
 
-from rabbit.config import configure_logging, MQ_NOTIFICATIONS_ROUTING_KEY
+from rabbit.common.direct_notifications import DirectNotifyRabbit
+from rabbit.config import configure_logging, MQ_NOTIFICATIONS_QUEUE
 from rabbit import RabbitBase
 
 log = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ async def process_message(msg: AbstractIncomingMessage):
         await asyncio.sleep(delay)
         end_time = time.perf_counter()
         if random() < 0.3:
-            raise Exception("Internal error")
+            raise Exception("Internal error ")
         # Подтверждаем обработку сообщения (оно исчезнет из очереди)
         await msg.ack()
 
@@ -32,32 +33,15 @@ async def process_message(msg: AbstractIncomingMessage):
         # Возвращаем сообщение обратно в очередь для повторной обработки
         # Без вызова nack потребитель просто остановит работу
         # Нам придется явно перезапускать процесс
-        await msg.nack()
+        await msg.nack(requeue=False)
         # await msg.nack(requeue=False) === msg.reject() - сообщение не вернется в очередь
         # await msg.nack(multiple=True) - вернет в очередь {prefetch_count} сообщений при ошибке обработки любого из них
 
 
-async def consume_messages(channel: AbstractRobustChannel) -> None:
-    # По умолчанию RabbitMQ использует RoundRobin (равномерное распределение по кругу)
-    # Все потребители получат сразу все сообщения в одинаковом количестве
-    # Если хотим равномерно распределить нагрузку надо указать загружаемое количество сообщений
-
-    # Указываем загрузить только одно сообщение, а следующее только после обработки предыдущего
-    await channel.set_qos(prefetch_count=3)
-    # Параметр durable указывает не удалять очередь после остановки Rabbit
-    queue = await channel.declare_queue(MQ_NOTIFICATIONS_ROUTING_KEY, durable=True)
-    # queue = await channel.get_queue(MQ_ROUTING_KEY)
-    await queue.consume(process_message, no_ack=False)
-    # Альтернативный способ через цикл
-    # async with queue.iterator() as queue_iter:
-    #     async for message in queue_iter:
-    #         await process_message(message)
-
-
 async def main():
-    async with RabbitBase() as rabbit:
+    async with DirectNotifyRabbit() as rabbit:
         log.info("Created channel %s", rabbit.channel)
-        await consume_messages(rabbit.channel)
+        await rabbit.consume_messages(process_message_callback=process_message, prefetch_count=3)
         await asyncio.Event().wait()
 
 

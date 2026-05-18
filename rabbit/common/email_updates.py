@@ -18,7 +18,7 @@ class EmailUpdatesRabbit(RabbitBase):
         return self._exchange
 
     async def declare_email_updates_exchange(self) -> AbstractRobustExchange:
-        self._exchange = await self._channel.declare_exchange(config.MQ_EMAIL_UPDATES_EXCHANGE_NAME,
+        self._exchange = await self._channel.declare_exchange(config.MQ_EMAIL_UPDATES_EXCHANGE,
                                                               aio_pika.ExchangeType.FANOUT)
         return self._exchange
 
@@ -31,7 +31,7 @@ class EmailUpdatesRabbit(RabbitBase):
         (Она будет существовать только в рамках подключения к каналу и иметь уникальное имя)"""
         await self.declare_email_updates_exchange()
         queue = await self._channel.declare_queue(name=queue_name, exclusive=exclusive)
-        await queue.bind(exchange=config.MQ_EMAIL_UPDATES_EXCHANGE_NAME)
+        await queue.bind(exchange=config.MQ_EMAIL_UPDATES_EXCHANGE)
         return queue
 
     async def consume_messages(

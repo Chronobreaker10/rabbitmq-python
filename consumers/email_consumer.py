@@ -28,7 +28,7 @@ async def main():
         log.info("Created channel %s", rabbit.channel)
         await rabbit.consume_messages(
             process_message_callback=send_email,
-            queue_name=config.MQ_EMAIL_UPDATES_EMAIL_QUEUE_NAME,
+            queue_name=config.MQ_EMAIL_UPDATES_EMAIL_QUEUE,
         )
         await asyncio.Event().wait()
 

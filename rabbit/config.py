@@ -14,13 +14,14 @@ RMQ_PORT = 5672
 RMQ_USER = "user"
 RMQ_PASSWORD = "password"
 
-MQ_NOTIFICATIONS_EXCHANGE_NAME = "notifications"
-MQ_NOTIFICATIONS_ROUTING_KEY = "notifications"
-MQ_NOTIFICATIONS_QUEUE_NAME = "notifications"
+MQ_NOTIFICATIONS_EXCHANGE = "notifications"
+MQ_NOTIFICATIONS_QUEUE = "notifications"
+MQ_NOTIFICATIONS_DEAD_LETTER_QUEUE = "dlq-notifications"
+MQ_NOTIFICATIONS_DEAD_LETTER_EXCHANGE = "dlx-notifications"
 
-MQ_EMAIL_UPDATES_EXCHANGE_NAME = "email.updates"
-MQ_EMAIL_UPDATES_EMAIL_QUEUE_NAME = "email.updates.email_queue"
-MQ_EMAIL_UPDATES_PUSH_QUEUE_NAME = "email.updates.push_queue"
+MQ_EMAIL_UPDATES_EXCHANGE = "email.updates"
+MQ_EMAIL_UPDATES_EMAIL_QUEUE = "email.updates.email_queue"
+MQ_EMAIL_UPDATES_PUSH_QUEUE = "email.updates.push_queue"
 
 
 @asynccontextmanager

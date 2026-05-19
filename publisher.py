@@ -10,14 +10,20 @@ log = logging.getLogger(__name__)
 
 
 async def main():
-    async with DirectNotifyRabbit(durable=True) as rabbit:
-        await rabbit.declare_direct_notify_queue(ttl=config.RMQ_TTL_MS, with_dlq=True)
+    async with DirectNotifyRabbit(durable=True, retry=True) as rabbit:
+        # await rabbit.declare_direct_notify_queue(ttl=config.RMQ_TTL_MS, with_dlq=True)
+        await rabbit.declare_direct_notify_queue(with_dlq=True)
         log.info("Connecting to RabbitMQ %s", rabbit.connection)
         log.info("Created channel %s", rabbit.channel)
-        for i in range(3000):
+        for i in range(30):
             message_body = f"[{i:02d}] Hello, World! {time.strftime('%H:%M:%S')}"
             await rabbit.publish_message(message_body)
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.1)
+
+
+async def clear_rabbit():
+    async with DirectNotifyRabbit() as rabbit:
+        await rabbit.clear()
 
 
 if __name__ == "__main__":

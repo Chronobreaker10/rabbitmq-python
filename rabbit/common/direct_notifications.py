@@ -17,14 +17,27 @@ class DirectNotifyRabbit(RabbitBase):
     _channel: AbstractRobustChannel
     _exchange: AbstractRobustExchange
 
-    def __init__(self, settings: RabbitConfig = RabbitConfig(), durable: bool = False) -> None:
+    def __init__(
+            self,
+            settings: RabbitConfig = RabbitConfig(),
+            durable: bool = False,
+            retry: bool = False,
+    ) -> None:
         super().__init__(settings)
         # durable - обменник не исчезнет после остановки Rabbit
         self._durable = durable
+        self._retry = retry
 
     @property
     def exchange(self) -> AbstractRobustExchange:
         return self._exchange
+
+    async def clear(self):
+        await self._channel.queue_delete(config.MQ_NOTIFICATIONS_DEAD_LETTER_QUEUE)
+        await self._channel.queue_delete(config.MQ_NOTIFICATIONS_QUEUE)
+        await self._channel.exchange_delete(config.MQ_FAILED_NOTIFICATIONS_QUEUE)
+        await self._channel.exchange_delete(config.MQ_NOTIFICATIONS_DEAD_LETTER_EXCHANGE)
+        await self._channel.exchange_delete(config.MQ_NOTIFICATIONS_EXCHANGE)
 
     async def declare_direct_notify_exchange(self) -> AbstractRobustExchange:
         self._exchange = await self._channel.declare_exchange(
@@ -41,6 +54,36 @@ class DirectNotifyRabbit(RabbitBase):
             durable=self._durable
         )
 
+    async def declare_failed_queue(self):
+        failed_queue = await self._channel.declare_queue(
+            name=config.MQ_FAILED_NOTIFICATIONS_QUEUE,
+            durable=self._durable
+        )
+        await failed_queue.bind(
+            exchange=config.MQ_NOTIFICATIONS_EXCHANGE,
+            routing_key=config.MQ_FAILED_NOTIFICATIONS_QUEUE
+        )
+
+    async def declare_ddl_queue(self):
+        await self.declare_direct_notify_dead_letter_exchange()
+        arguments = {}
+        if self._retry:
+            arguments["x-dead-letter-exchange"] = config.MQ_NOTIFICATIONS_EXCHANGE
+            arguments["x-dead-letter-routing-key"] = config.MQ_NOTIFICATIONS_QUEUE
+            arguments["x-message-ttl"] = config.MQ_FAILED_NOTIFICATIONS_RETRY_SECS * 1000
+        else:
+            arguments["x-message-ttl"] = config.RMQ_DLQ_TTL_MS
+        # Параметр durable указывает не удалять очередь после остановки Rabbit
+        dlq = await self._channel.declare_queue(
+            name=config.MQ_NOTIFICATIONS_DEAD_LETTER_QUEUE,
+            arguments=arguments,
+            durable=self._durable
+        )
+        await dlq.bind(
+            exchange=config.MQ_NOTIFICATIONS_DEAD_LETTER_EXCHANGE,
+            routing_key=config.MQ_NOTIFICATIONS_DEAD_LETTER_QUEUE
+        )
+
     async def declare_direct_notify_queue(
             self,
             with_dlq: bool = False,
@@ -48,19 +91,9 @@ class DirectNotifyRabbit(RabbitBase):
     ) -> AbstractQueue:
         await self.declare_direct_notify_exchange()
         if with_dlq:
-            await self.declare_direct_notify_dead_letter_exchange()
-            # Параметр durable указывает не удалять очередь после остановки Rabbit
-            dlq = await self._channel.declare_queue(
-                name=config.MQ_NOTIFICATIONS_DEAD_LETTER_QUEUE,
-                arguments={
-                    "x-message-ttl": config.RMQ_DLQ_TTL_MS
-                },
-                durable=self._durable
-            )
-            await dlq.bind(
-                exchange=config.MQ_NOTIFICATIONS_DEAD_LETTER_EXCHANGE,
-                routing_key=config.MQ_NOTIFICATIONS_DEAD_LETTER_QUEUE
-            )
+            await self.declare_ddl_queue()
+        if self._retry:
+            await self.declare_failed_queue()
         arguments = {}
         if with_dlq:
             arguments["x-dead-letter-exchange"] = config.MQ_NOTIFICATIONS_DEAD_LETTER_EXCHANGE
@@ -93,7 +126,8 @@ class DirectNotifyRabbit(RabbitBase):
             self,
             process_message_callback: Callable[
                 [AbstractIncomingMessage], Coroutine[AbstractIncomingMessage, Any, None]],
-            prefetch_count: int = 1
+            prefetch_count: int = 1,
+            with_dlq: bool = False
     ):
         # По умолчанию RabbitMQ использует RoundRobin (равномерное распределение по кругу)
         # Все потребители получат сразу все сообщения в одинаковом количестве
@@ -101,7 +135,7 @@ class DirectNotifyRabbit(RabbitBase):
 
         # Указываем загрузить только одно сообщение, а следующее только после обработки предыдущего
         await self._channel.set_qos(prefetch_count=prefetch_count)
-        queue = await self.declare_direct_notify_queue()
+        queue = await self.declare_direct_notify_queue(with_dlq=with_dlq)
         await queue.consume(process_message_callback, no_ack=False)
 
         # Альтернативный способ через цикл

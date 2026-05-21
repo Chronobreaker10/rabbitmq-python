@@ -27,6 +27,13 @@ MQ_EMAIL_UPDATES_EXCHANGE = "email.updates"
 MQ_EMAIL_UPDATES_EMAIL_QUEUE = "email.updates.email_queue"
 MQ_EMAIL_UPDATES_PUSH_QUEUE = "email.updates.push_queue"
 
+MQ_USER_EVENTS_EXCHANGE = "user.events"
+MQ_USER_EVENTS_REGISTERED_QUEUE = "users.registered"
+MQ_USER_EVENTS_VERIFIED_QUEUE = "users.verified"
+MQ_USER_EVENTS_REGISTER_ROUTING_KEY = "users.*.registered"
+MQ_USER_EVENTS_VERIFIED_ROUTING_KEY = "users.*.verified"
+
+
 @asynccontextmanager
 async def get_connection() -> AsyncGenerator[AbstractRobustConnection, Any]:
     yield await aio_pika.connect_robust(

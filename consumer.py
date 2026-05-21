@@ -33,7 +33,7 @@ async def process_message(msg: AbstractIncomingMessage):
         start_time = time.perf_counter()
         await asyncio.sleep(0.5)
         end_time = time.perf_counter()
-        if random() < 0.5:
+        if random() < 0.0001:
             raise Exception("Internal error ")
         # Подтверждаем обработку сообщения (оно исчезнет из очереди)
         await msg.ack()

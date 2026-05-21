@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Callable, Coroutine, Any
 
@@ -112,15 +113,33 @@ class DirectNotifyRabbit(RabbitBase):
         return queue
 
     async def publish_message(self, body: str) -> None:
-        log.debug("Send message to RabbitMQ %s", body)
-        await self.exchange.publish(
-            Message(
-                body=body.encode('utf-8'),
-                delivery_mode=aio_pika.DeliveryMode.PERSISTENT if self._durable else aio_pika.DeliveryMode.NOT_PERSISTENT
-            ),
-            routing_key=config.MQ_NOTIFICATIONS_QUEUE,
-        )
-        log.warning("Published message to RabbitMQ %s", body)
+        try:
+            log.debug("Send message to RabbitMQ %s", body)
+            t = asyncio.create_task(self.exchange.publish(
+                Message(
+                    body=body.encode('utf-8'),
+                    delivery_mode=aio_pika.DeliveryMode.PERSISTENT if self._durable else aio_pika.DeliveryMode.NOT_PERSISTENT,
+                ),
+                routing_key=config.MQ_NOTIFICATIONS_QUEUE,
+                # Гарантия доставки (True по умолчанию)
+                # выбрасываем исключение если не получилось опубликовать сообщения
+                mandatory=True,
+                timeout=5.0
+            ))
+            log.warning("Publishing... message to RabbitMQ %s", body)
+            await asyncio.sleep(0.05)
+            await self._channel.close()
+            await t
+            await asyncio.sleep(6)
+            await self._channel.reopen()
+            await t
+            log.warning("Published message to RabbitMQ %s", body)
+        except asyncio.TimeoutError:
+            print("Ошибка: Не удалось дождаться подтверждения от брокера в течение 5 секунд.")
+            # Здесь нужно реализовать логику повторной отправки или сохранения в локальное хранилище
+        except aio_pika.exceptions.DeliveryError as e:
+            # Эта ошибка возникает, например, если сообщение с флагом mandatory=true не может быть маршрутизировано
+            print(f"Ошибка доставки: {e}")
 
     async def consume_messages(
             self,

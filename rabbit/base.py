@@ -19,10 +19,11 @@ class RabbitException(Exception):
 
 
 class RabbitBase:
-    def __init__(self, config: RabbitConfig = RabbitConfig()) -> None:
+    def __init__(self, config: RabbitConfig = RabbitConfig(), publish_confirms: bool = False) -> None:
         self.config: RabbitConfig = config
         self._connection: AbstractRobustConnection | None = None
         self._channel: AbstractRobustChannel | None = None
+        self._publish_confirms = publish_confirms
 
     @property
     def url(self):

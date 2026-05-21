@@ -51,5 +51,6 @@ class TopicUserEventsRabbit(RabbitBase):
         await self.declare_user_verified_queue()
         await self.declare_user_registered_queue()
         queue = await self._channel.get_queue(queue_name)
-        await queue.consume(process_message_callback, no_ack=False)
+        await queue.consume(process_message_callback, no_ack=False, timeout=5)
+        # Или await queue.get() в цикле
         log.warning(f"Queue {queue.name} waiting for messages...")

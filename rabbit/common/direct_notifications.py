@@ -160,5 +160,6 @@ class DirectNotifyRabbit(RabbitBase):
         # Альтернативный способ через цикл
         # async with queue.iterator() as queue_iter:
         #     async for message in queue_iter:
-        #         await process_message(message)
-        log.warning(f"Queue {queue.name} waiting for messages...")
+        #         # message.ack() вызовется автоматически
+        #         async with message.process(requeue=False):
+        #             await process_message_callback(message)
